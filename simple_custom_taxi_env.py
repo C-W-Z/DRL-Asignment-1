@@ -4,12 +4,14 @@ import importlib.util
 import time
 from IPython.display import clear_output
 import random
-# This environment allows you to verify whether your program runs correctly during testing, 
-# as it follows the same observation format from `env.reset()` and `env.step()`. 
-# However, keep in mind that this is just a simplified environment. 
+from obs_to_state import obs_to_state
+import pickle
+# This environment allows you to verify whether your program runs correctly during testing,
+# as it follows the same observation format from `env.reset()` and `env.step()`.
+# However, keep in mind that this is just a simplified environment.
 # The full specifications for the real testing environment can be found in the provided spec.
-# 
-# You are free to modify this file to better match the real environment and train your own agent. 
+#
+# You are free to modify this file to better match the real environment and train your own agent.
 # Good luck!
 
 
@@ -22,10 +24,10 @@ class SimpleTaxiEnv():
         self.fuel_limit = fuel_limit
         self.current_fuel = fuel_limit
         self.passenger_picked_up = False
-        
+
         self.stations = [(0, 0), (0, self.grid_size - 1), (self.grid_size - 1, 0), (self.grid_size - 1, self.grid_size - 1)]
         self.passenger_loc = None
-       
+
         self.obstacles = set()  # No obstacles in simple version
         self.destination = None
 
@@ -33,7 +35,7 @@ class SimpleTaxiEnv():
         """Reset the environment, ensuring Taxi, passenger, and destination are not overlapping obstacles"""
         self.current_fuel = self.fuel_limit
         self.passenger_picked_up = False
-        
+
 
         available_positions = [
             (x, y) for x in range(self.grid_size) for y in range(self.grid_size)
@@ -41,13 +43,13 @@ class SimpleTaxiEnv():
         ]
 
         self.taxi_pos = random.choice(available_positions)
-        
+
         self.passenger_loc = random.choice([pos for pos in self.stations])
-        
-        
+
+
         possible_destinations = [s for s in self.stations if s != self.passenger_loc]
         self.destination = random.choice(possible_destinations)
-        
+
         return self.get_state(), {}
 
     def step(self, action):
@@ -63,8 +65,8 @@ class SimpleTaxiEnv():
             next_col += 1
         elif action == 3:  # Move Left
             next_col -= 1
-        
-        
+
+
         if action in [0, 1, 2, 3]:  # Only movement actions should be checked
             if (next_row, next_col) in self.obstacles or not (0 <= next_row < self.grid_size and 0 <= next_col < self.grid_size):
                 reward -=5
@@ -76,9 +78,9 @@ class SimpleTaxiEnv():
             if action == 4:  # PICKUP
                 if self.taxi_pos == self.passenger_loc:
                     self.passenger_picked_up = True
-                    self.passenger_loc = self.taxi_pos  
+                    self.passenger_loc = self.taxi_pos
                 else:
-                    reward = -10  
+                    reward = -10
             elif action == 5:  # DROPOFF
                 if self.passenger_picked_up:
                     if self.taxi_pos == self.destination:
@@ -90,14 +92,14 @@ class SimpleTaxiEnv():
                     self.passenger_loc = self.taxi_pos
                 else:
                     reward -=10
-                    
-        reward -= 0.1  
+
+        reward -= 0.1
 
         self.current_fuel -= 1
         if self.current_fuel <= 0:
             return self.get_state(), reward -10, True, {}
 
-        
+
 
         return self.get_state(), reward, False, {}
 
@@ -106,7 +108,7 @@ class SimpleTaxiEnv():
         taxi_row, taxi_col = self.taxi_pos
         passenger_row, passenger_col = self.passenger_loc
         destination_row, destination_col = self.destination
-        
+
         obstacle_north = int(taxi_row == 0 or (taxi_row-1, taxi_col) in self.obstacles)
         obstacle_south = int(taxi_row == self.grid_size - 1 or (taxi_row+1, taxi_col) in self.obstacles)
         obstacle_east  = int(taxi_col == self.grid_size - 1 or (taxi_row, taxi_col+1) in self.obstacles)
@@ -118,7 +120,7 @@ class SimpleTaxiEnv():
         passenger_loc_west  = int((taxi_row, taxi_col - 1) == self.passenger_loc)
         passenger_loc_middle  = int( (taxi_row, taxi_col) == self.passenger_loc)
         passenger_look = passenger_loc_north or passenger_loc_south or passenger_loc_east or passenger_loc_west or passenger_loc_middle
-       
+
         destination_loc_north = int( (taxi_row - 1, taxi_col) == self.destination)
         destination_loc_south = int( (taxi_row + 1, taxi_col) == self.destination)
         destination_loc_east  = int( (taxi_row, taxi_col + 1) == self.destination)
@@ -126,22 +128,22 @@ class SimpleTaxiEnv():
         destination_loc_middle  = int( (taxi_row, taxi_col) == self.destination)
         destination_look = destination_loc_north or destination_loc_south or destination_loc_east or destination_loc_west or destination_loc_middle
 
-        
+
         state = (taxi_row, taxi_col, self.stations[0][0],self.stations[0][1] ,self.stations[1][0],self.stations[1][1],self.stations[2][0],self.stations[2][1],self.stations[3][0],self.stations[3][1],obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look)
         return state
     def render_env(self, taxi_pos,   action=None, step=None, fuel=None):
         clear_output(wait=True)
 
         grid = [['.'] * self.grid_size for _ in range(self.grid_size)]
-        
+
         '''
         # Place passenger
         py, px = passenger_pos
         if 0 <= px < self.grid_size and 0 <= py < self.grid_size:
             grid[py][px] = 'P'
         '''
-        
-        
+
+
         grid[0][0]='R'
         grid[0][4]='G'
         grid[4][0]='Y'
@@ -187,7 +189,7 @@ def run_agent(agent_file, env_config, render=False):
     done = False
     step_count = 0
     stations = [(0, 0), (0, 4), (4, 0), (4,4)]
-    
+
     taxi_row, taxi_col, _,_,_,_,_,_,_,_,obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look = obs
 
     if render:
@@ -195,8 +197,8 @@ def run_agent(agent_file, env_config, render=False):
                        action=None, step=step_count, fuel=env.current_fuel)
         time.sleep(0.5)
     while not done:
-        
-        
+
+
         action = student_agent.get_action(obs)
 
         obs, reward, done, _ = env.step(action)
@@ -213,10 +215,65 @@ def run_agent(agent_file, env_config, render=False):
     print(f"Agent Finished in {step_count} steps, Score: {total_reward}")
     return total_reward
 
+q_table = {}
+
+def train_agent(agent_file, env_config, episodes=3000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.999):
+    spec = importlib.util.spec_from_file_location("student_agent", agent_file)
+    student_agent = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(student_agent)
+
+    rewards_per_episode = []
+    epsilon = epsilon_start
+
+    env = SimpleTaxiEnv(**env_config)
+
+    for episode in range(episodes):
+
+        obs, _ = env.reset()
+        total_reward = 0
+        done = False
+
+        state = obs_to_state(obs)
+
+        while not done:
+            if state not in q_table:
+                q_table[state] = {a: 0.0 for a in range(6)} # 6 actions
+
+            if np.random.uniform(0, 1) < epsilon:
+                action = random.choice([0, 1, 2, 3, 4, 5])
+            else:
+                action = max(q_table[state], key=q_table[state].get)
+
+            obs, reward, done, _ = env.step(action)
+            # print('obs=',obs)
+            total_reward += reward
+
+            next_state = obs_to_state(obs)
+
+            if next_state not in q_table:
+                q_table[next_state] = {a: 0.0 for a in range(6)}
+
+            q_table[state][action] += alpha * (reward + gamma * max(q_table[next_state].values()) - q_table[state][action])
+
+            state = next_state
+
+        rewards_per_episode.append(total_reward)
+
+        epsilon = max(epsilon_end, epsilon * decay_rate)
+
+        if (episode + 1) % 100 == 0:
+            avg_reward = np.mean(rewards_per_episode[-100:])
+            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.4f}, Epsilon: {epsilon:.3f}")
+
+    with open('q_table.pkl', 'wb') as file:
+        pickle.dump(q_table, file, protocol=pickle.HIGHEST_PROTOCOL)
+
 if __name__ == "__main__":
     env_config = {
         "fuel_limit": 5000
     }
-    
-    agent_score = run_agent("student_agent.py", env_config, render=True)
+
+    train_agent("student_agent.py", env_config)
+
+    agent_score = run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score}")

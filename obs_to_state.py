@@ -23,4 +23,6 @@ def obs_to_state(obs):
         cur_target = 0
     target_dir = station_dirs[cur_target]
 
+    # print("Cur Target:", cur_target)
+
     return (target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look)

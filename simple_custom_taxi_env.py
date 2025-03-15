@@ -244,11 +244,33 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             else:
                 action = max(q_table[state], key=q_table[state].get)
 
+            # s = [[0,0] for _ in range(4)]
+            # r, c, s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1], s[3][0], s[3][1], _, _, _, _, passenger_look, destination_look = obs
+
             obs, reward, done, _ = env.step(action)
             # print('obs=',obs)
-            total_reward += reward
-
             next_state = obs_to_state(obs)
+
+            # nr, nc, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, destination_look = obs
+
+            # shaped rewards
+            # shaped_reward = 0
+            # if passenger_look and action == 4 and ([r, c] == s[0] or [r, c] == s[1] or [r, c] == s[2] or [r, c] == s[3]):
+            #     shaped_reward += 10
+            # if destination_look and action == 5 and ([r, c] == s[0] or [r, c] == s[1] or [r, c] == s[2] or [r, c] == s[3]):
+            #     shaped_reward += 20
+            # if not destination_look and action == 5:
+            #     shaped_reward -= 1000
+            # if [nr, nc] == s[0] and [r, c] != s[0]:
+            #     shaped_reward += 1
+            # if [nr, nc] == s[1] and [r, c] != s[1]:
+            #     shaped_reward += 1
+            # if [nr, nc] == s[2] and [r, c] != s[2]:
+            #     shaped_reward += 1
+            # if [nr, nc] == s[3] and [r, c] != s[3]:
+            #     shaped_reward += 1
+
+            # reward += shaped_reward
 
             if next_state not in q_table:
                 q_table[next_state] = {a: 0.0 for a in range(6)}
@@ -256,6 +278,7 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             q_table[state][action] += alpha * (reward + gamma * max(q_table[next_state].values()) - q_table[state][action])
 
             state = next_state
+            total_reward += reward
 
         rewards_per_episode.append(total_reward)
 
@@ -273,7 +296,7 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
 
-    train_agent("student_agent.py", env_config)
+    # train_agent("student_agent.py", env_config)
 
     agent_score = run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score}")

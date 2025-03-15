@@ -202,7 +202,7 @@ def run_agent(agent_file, env_config, render=False):
         action = student_agent.get_action(obs)
 
         obs, reward, done, _ = env.step(action)
-        print('obs=',obs)
+        # print('obs=',obs)
         total_reward += reward
         step_count += 1
 
@@ -217,7 +217,7 @@ def run_agent(agent_file, env_config, render=False):
 
 q_table = {}
 
-def train_agent(agent_file, env_config, episodes=3000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.999):
+def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.9995):
     spec = importlib.util.spec_from_file_location("student_agent", agent_file)
     student_agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(student_agent)

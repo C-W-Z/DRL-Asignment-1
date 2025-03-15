@@ -25,4 +25,13 @@ def obs_to_state(obs):
 
     # print("Cur Target:", cur_target)
 
+    def sign(x):
+        if x > 0:
+            return 1
+        if x < 0:
+            return -1
+        return 0
+
+    target_dir = (sign(target_dir[0]), sign(target_dir[1]))
+
     return (target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look)

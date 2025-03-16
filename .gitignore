@@ -8,4 +8,4 @@ __pycache__/
 # ignore eval.py
 eval.py
 
-q_table_1.pkl
+q_table_*.pkl

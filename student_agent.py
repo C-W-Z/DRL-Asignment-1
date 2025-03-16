@@ -5,6 +5,13 @@ import random
 import gym
 from obs_to_state import obs_to_state
 
+def sign(x):
+    if x > 0:
+        return 1
+    if x < 0:
+        return -1
+    return 0
+
 def get_action(obs):
 
     # TODO: Train your own agent
@@ -20,7 +27,8 @@ def get_action(obs):
 
     while state not in q_table:
         target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look = state
-        target_dir = (target_dir[0] // 2, target_dir[1] // 2)
+        target_dir = (sign(target_dir[0]) * (abs(target_dir[0]) - 1),
+                      sign(target_dir[1]) * (abs(target_dir[1]) - 1))
         state = (target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look)
         if target_dir[0] == 0 and target_dir[1] == 0:
             break

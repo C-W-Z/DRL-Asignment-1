@@ -217,7 +217,7 @@ def run_agent(agent_file, env_config, render=False):
 
 q_table = {}
 
-def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.9995):
+def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.99975):
     spec = importlib.util.spec_from_file_location("student_agent", agent_file)
     student_agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(student_agent)
@@ -293,7 +293,7 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 5,
+        "grid_size": 10,
         "fuel_limit": 5000
     }
 

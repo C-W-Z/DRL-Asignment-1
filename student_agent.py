@@ -18,6 +18,13 @@ def get_action(obs):
     with open('q_table.pkl', 'rb') as file:
         q_table = pickle.load(file)
 
+    while state not in q_table:
+        target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look = state
+        target_dir = (target_dir[0] // 2, target_dir[1] // 2)
+        state = (target_dir, obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look)
+        if target_dir[0] == 0 and target_dir[1] == 0:
+            break
+
     if state in q_table:
         return max(q_table[state], key=q_table[state].get)
 

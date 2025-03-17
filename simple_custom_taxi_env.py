@@ -293,7 +293,7 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 5,
+        "grid_size": 10,
         "fuel_limit": 5000
     }
 

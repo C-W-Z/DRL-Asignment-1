@@ -337,14 +337,14 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 5,
+        "grid_size": 10,
         "fuel_limit": 5000
     }
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    N = 1
+    N = 10
     agent_score = 0
     for _ in range(N):
-        agent_score += run_agent("student_agent.py", env_config, render=True)
+        agent_score += run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score / N}")

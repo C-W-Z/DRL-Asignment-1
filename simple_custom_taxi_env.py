@@ -343,8 +343,8 @@ if __name__ == "__main__":
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    N = 10
+    N = 1
     agent_score = 0
     for _ in range(N):
-        agent_score += run_agent("student_agent.py", env_config, render=False)
+        agent_score += run_agent("student_agent.py", env_config, render=True)
     print(f"Final Score: {agent_score / N}")

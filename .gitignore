@@ -9,3 +9,4 @@ __pycache__/
 eval.py
 
 q_table_*.pkl
+*.json

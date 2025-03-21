@@ -308,5 +308,5 @@ if __name__ == "__main__":
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    agent_score = run_agent("student_agent.py", env_config, render=True)
+    agent_score = run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score}")

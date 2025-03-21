@@ -140,6 +140,8 @@ class QAgent:
             if obs[15]:
                 self.destination_pos = close
 
+        at_destination = (self.destination_pos is not None) and (self.destination_pos == taxi_pos)
+
         # 如果還沒找到乘客和目的地，優先探索四個角落
         if self.passenger_pos is None:
             unexplored = [c for c in stations if c not in self.visited_corners]
@@ -148,7 +150,7 @@ class QAgent:
                 return (
                     target_dir,
                     # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                    passenger_look, destination_look,
+                    passenger_look, at_destination,
                     self.has_passenger
                 )
 
@@ -159,7 +161,7 @@ class QAgent:
             return (
                 target_dir,
                 # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                passenger_look, destination_look,
+                passenger_look, at_destination,
                 self.has_passenger
             )
 
@@ -170,7 +172,7 @@ class QAgent:
                 return (
                     target_dir,
                     # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                    passenger_look, destination_look,
+                    passenger_look, at_destination,
                     self.has_passenger
                 )
 
@@ -180,7 +182,7 @@ class QAgent:
             return (
                 target_dir,
                 # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                passenger_look, destination_look,
+                passenger_look, at_destination,
                 self.has_passenger
             )
 
@@ -188,7 +190,7 @@ class QAgent:
         return (
             target_dir,
             # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-            passenger_look, destination_look,
+            passenger_look, at_destination,
             self.has_passenger
         )
 

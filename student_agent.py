@@ -5,6 +5,9 @@ import random
 import gym
 from obs_to_state import obs_to_state
 
+def get_vector(from_pos, to_pos):
+        return (to_pos[0] - from_pos[0], to_pos[1] - from_pos[1])
+
 def taxi_close_to_station(obs):
     r, c = obs[:2]
     s = [(obs[2], obs[3]), (obs[4], obs[5]), (obs[6], obs[7]), (obs[8], obs[9])]
@@ -99,7 +102,120 @@ class RuleAgent:
 
         return random.choice([0, 1, 2, 3])
 
-agent = RuleAgent()
+class QAgent:
+    def __init__(self):
+        self.passenger_pos = None
+        self.destination_pos = None
+        self.has_passenger = False
+        self.visited_corners = set()
+        self.q_table = {}
+
+    def load_q_table(self, path='q_table.pkl'):
+        with open(path, 'rb') as file:
+            self.q_table = pickle.load(file)
+
+    def obs_to_state(self, obs):
+        stations = [[0,0] for _ in range(4)]
+        taxi_row, taxi_col, stations[0][0], stations[0][1], stations[1][0], stations[1][1], stations[2][0], stations[2][1], stations[3][0], stations[3][1], obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look, destination_look = obs
+        stations = [(r, c) for [r, c] in stations]
+        taxi_pos = (taxi_row, taxi_col)
+
+        close = taxi_close_to_station(obs)
+        if close is not None:
+            self.visited_corners.add(close)
+            if obs[14]:
+                self.passenger_pos = close
+            if obs[15]:
+                self.destination_pos = close
+
+        # 如果還沒找到乘客和目的地，優先探索四個角落
+        if self.passenger_pos is None:
+            unexplored = [c for c in stations if c not in self.visited_corners]
+            if unexplored:
+                target_dir = get_vector(taxi_pos, unexplored[0])
+                return (
+                    target_dir,
+                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    passenger_look, destination_look,
+                    self.has_passenger
+                )
+
+        # 前往乘客所在地
+        if not self.has_passenger and self.passenger_pos:
+            # print("target passenger:", target_x, target_y, taxi_x, taxi_y)
+            target_dir = get_vector(taxi_pos, self.passenger_pos)
+            return (
+                target_dir,
+                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                passenger_look, destination_look,
+                self.has_passenger
+            )
+
+        if self.destination_pos is None:
+            unexplored = [c for c in stations if c not in self.visited_corners]
+            if unexplored:
+                target_dir = get_vector(taxi_pos, unexplored[0])
+                return (
+                    target_dir,
+                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    passenger_look, destination_look,
+                    self.has_passenger
+                )
+
+        if self.has_passenger and self.destination_pos:
+            # print("target destination:", target_x, target_y, taxi_x, taxi_y)
+            target_dir = get_vector(taxi_pos, self.destination_pos)
+            return (
+                target_dir,
+                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                passenger_look, destination_look,
+                self.has_passenger
+            )
+
+        target_dir = (0, 0)
+        return (
+            target_dir,
+            obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+            passenger_look, destination_look,
+            self.has_passenger
+        )
+
+    def get_action(self, state):
+        if state in self.q_table:
+            return max(self.q_table[state], key=self.q_table[state].get)
+        return random.choice([0, 1, 2, 3])
+
+    def update_has_passenger(self, obs, action):
+        stations = [[0,0] for _ in range(4)]
+        taxi_row, taxi_col, stations[0][0], stations[0][1], stations[1][0], stations[1][1], stations[2][0], stations[2][1], stations[3][0], stations[3][1], _, _, _, _, passenger_look, _ = obs
+        stations = [(r, c) for [r, c] in stations]
+        taxi_pos = (taxi_row, taxi_col)
+
+        if passenger_look and not self.has_passenger and action == 4 and (taxi_pos in stations or taxi_pos == self.passenger_pos):
+            self.has_passenger = True
+            # print("pickup")
+        elif self.has_passenger and action == 5:
+            self.has_passenger = False
+
+    def update_q_table(self, state, next_state, action, alpha, reward, gamma):
+        self.q_table[state][action] += alpha * (reward + gamma * max(self.q_table[next_state].values()) - self.q_table[state][action])
+
+    def init_state_in_q_table(self, state):
+        if state not in self.q_table:
+            self.q_table[state] = {a: 0.0 for a in range(6)} # 6 actions
+
+    def save_q_table(self):
+        with open('q_table.pkl', 'wb') as file:
+            pickle.dump(self.q_table, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+# agent = RuleAgent()
+agent = QAgent()
+agent.load_q_table('q_table.pkl')
+
+def get_action_training(obs, state):
+    action = agent.get_action(state)
+    agent.update_has_passenger(obs, action)
+    return action
 
 def sign(x):
     if x > 0:
@@ -115,8 +231,9 @@ def get_action(obs):
     # NOTE: Keep in mind that your Q-table may not cover all possible states in the testing environment.
     #       To prevent crashes, implement a fallback strategy for missing keys.
     #       Otherwise, even if your agent performs well in training, it may fail during testing.
-    action = agent.choose_action(obs)
-    # agent.update_memory(obs, action)
+    state = agent.obs_to_state(obs)
+    action = agent.get_action(state)
+    agent.update_has_passenger(obs, action)
     return action
 
     state = obs_to_state(obs)

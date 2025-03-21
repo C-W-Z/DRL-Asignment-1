@@ -233,49 +233,39 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
         total_reward = 0
         done = False
 
-        state = obs_to_state(obs)
+        state = student_agent.agent.obs_to_state(obs)
 
         while not done:
-            if state not in q_table:
-                q_table[state] = {a: 0.0 for a in range(6)} # 6 actions
+            student_agent.agent.init_state_in_q_table(state)
 
             if np.random.uniform(0, 1) < epsilon:
                 action = random.choice([0, 1, 2, 3, 4, 5])
             else:
-                action = max(q_table[state], key=q_table[state].get)
+                action = student_agent.get_action_training(obs, state)
 
             # s = [[0,0] for _ in range(4)]
             # r, c, s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1], s[3][0], s[3][1], _, _, _, _, passenger_look, destination_look = obs
 
+            before_picked_up = env.passenger_picked_up
+
             obs, reward, done, _ = env.step(action)
             # print('obs=',obs)
-            next_state = obs_to_state(obs)
+            next_state = student_agent.agent.obs_to_state(obs)
 
             # nr, nc, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, destination_look = obs
 
             # shaped rewards
-            # shaped_reward = 0
-            # if passenger_look and action == 4 and ([r, c] == s[0] or [r, c] == s[1] or [r, c] == s[2] or [r, c] == s[3]):
-            #     shaped_reward += 10
-            # if destination_look and action == 5 and ([r, c] == s[0] or [r, c] == s[1] or [r, c] == s[2] or [r, c] == s[3]):
-            #     shaped_reward += 20
-            # if not destination_look and action == 5:
-            #     shaped_reward -= 1000
-            # if [nr, nc] == s[0] and [r, c] != s[0]:
-            #     shaped_reward += 1
-            # if [nr, nc] == s[1] and [r, c] != s[1]:
-            #     shaped_reward += 1
-            # if [nr, nc] == s[2] and [r, c] != s[2]:
-            #     shaped_reward += 1
-            # if [nr, nc] == s[3] and [r, c] != s[3]:
-            #     shaped_reward += 1
+            shaped_reward = 0
+            if env.passenger_picked_up and not before_picked_up:
+                shaped_reward += 10
+            elif not env.passenger_picked_up and before_picked_up:
+                shaped_reward -= 20
 
-            # reward += shaped_reward
+            reward += shaped_reward
 
-            if next_state not in q_table:
-                q_table[next_state] = {a: 0.0 for a in range(6)}
+            student_agent.agent.init_state_in_q_table(next_state)
 
-            q_table[state][action] += alpha * (reward + gamma * max(q_table[next_state].values()) - q_table[state][action])
+            student_agent.agent.update_q_table(state, next_state, action, alpha, reward, gamma)
 
             state = next_state
             total_reward += reward
@@ -288,16 +278,15 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
             avg_reward = np.mean(rewards_per_episode[-100:])
             print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.4f}, Epsilon: {epsilon:.3f}")
 
-    with open('q_table.pkl', 'wb') as file:
-        pickle.dump(q_table, file, protocol=pickle.HIGHEST_PROTOCOL)
+    student_agent.agent.save_q_table()
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 10,
+        "grid_size": 5,
         "fuel_limit": 5000
     }
 
-    # train_agent("student_agent.py", env_config)
+    train_agent("student_agent.py", env_config)
 
     agent_score = run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score}")

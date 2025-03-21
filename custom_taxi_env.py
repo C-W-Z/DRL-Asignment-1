@@ -323,19 +323,17 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         if env.current_fuel > 0:
             update_times += 1
             student_agent.agent.update(gamma)
-        # else:
-        #     del student_agent.agent.rewards[:]
-        #     del student_agent.agent.saved_log_probs[:]
+        student_agent.agent.clean_update()
 
         # epsilon = max(epsilon_end, epsilon * decay_rate)
 
-        if (episode + 1) % 100 == 0:
-            avg_reward = np.mean(rewards_per_episode[-100:])
-            avg_shaped_reward = np.mean(shaped_rewards_per_episode[-100:])
+        if (episode + 1) % 50 == 0:
+            avg_reward = np.mean(rewards_per_episode[-50:])
+            avg_shaped_reward = np.mean(shaped_rewards_per_episode[-50:])
             # print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
             print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Update Times: {update_times}")
-            rewards_per_episode = []
-            shaped_rewards_per_episode = []
+            del rewards_per_episode[:]
+            del shaped_rewards_per_episode[:]
 
             student_agent.save_checkpoint(student_agent.agent)
 
@@ -347,7 +345,7 @@ if __name__ == "__main__":
 
     # train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
 
-    N = 1
+    N = 100
     agent_score = 0
     for _ in range(N):
         agent_score += run_agent("student_agent.py", env_config, render=False)

@@ -250,13 +250,6 @@ class PolicyAgent(nn.Module):
         self.init_policy()
         self.reset()
 
-    def reset(self):
-        self.passenger_pos = None
-        self.destination_pos = None
-        self.has_passenger = False
-        self.has_first_picked_up = False
-        self.visited_corners = set()
-
     def init_policy(self):
         self.state_size = (3, 3, 2, 2, 2, 2, 2, 2, 2)
         self.action_size = 6
@@ -269,6 +262,13 @@ class PolicyAgent(nn.Module):
 
         self.saved_log_probs = []
         self.rewards = []
+
+    def reset(self):
+        self.passenger_pos = None
+        self.destination_pos = None
+        self.has_passenger = False
+        self.has_first_picked_up = False
+        self.visited_corners = set()
 
     def forward(self, x):
         x = torch.flatten(x, start_dim=1)
@@ -301,6 +301,8 @@ class PolicyAgent(nn.Module):
         policy_loss = torch.cat(policy_loss).sum()
         policy_loss.backward()
         self.optimizer.step()
+
+    def clean_update(self):
         del self.rewards[:]
         del self.saved_log_probs[:]
 

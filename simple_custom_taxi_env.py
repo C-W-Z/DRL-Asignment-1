@@ -4,8 +4,7 @@ import importlib.util
 import time
 from IPython.display import clear_output
 import random
-from obs_to_state import obs_to_state
-import pickle
+# import pickle
 # This environment allows you to verify whether your program runs correctly during testing,
 # as it follows the same observation format from `env.reset()` and `env.step()`.
 # However, keep in mind that this is just a simplified environment.
@@ -14,6 +13,21 @@ import pickle
 # You are free to modify this file to better match the real environment and train your own agent.
 # Good luck!
 
+def generate_stations(grid_size):
+    def is_adjacent(pos1, pos2):
+        return abs(pos1[0] - pos2[0]) <= 1 and abs(pos1[1] - pos2[1]) <= 1
+
+    stations = []
+    all_positions = [(i, j) for i in range(grid_size) for j in range(grid_size)]
+    random.shuffle(all_positions)
+
+    for pos in all_positions:
+        if all(not is_adjacent(pos, existing) for existing in stations):
+            stations.append(pos)
+            if len(stations) == 4:
+                break
+
+    return stations
 
 class SimpleTaxiEnv():
     def __init__(self, grid_size=5, fuel_limit=50):
@@ -25,7 +39,7 @@ class SimpleTaxiEnv():
         self.current_fuel = fuel_limit
         self.passenger_picked_up = False
 
-        self.stations = [(0, 0), (0, self.grid_size - 1), (self.grid_size - 1, 0), (self.grid_size - 1, self.grid_size - 1)]
+        # self.stations = [(0, 0), (0, self.grid_size - 1), (self.grid_size - 1, 0), (self.grid_size - 1, self.grid_size - 1)]
         self.passenger_loc = None
 
         self.obstacles = set()  # No obstacles in simple version
@@ -36,6 +50,7 @@ class SimpleTaxiEnv():
         self.current_fuel = self.fuel_limit
         self.passenger_picked_up = False
 
+        self.stations = generate_stations(self.grid_size)
 
         available_positions = [
             (x, y) for x in range(self.grid_size) for y in range(self.grid_size)
@@ -144,10 +159,10 @@ class SimpleTaxiEnv():
         '''
 
 
-        grid[0][0]='R'
-        grid[0][4]='G'
-        grid[4][0]='Y'
-        grid[4][4]='B'
+        grid[self.stations[0][0]][self.stations[0][1]]='R'
+        grid[self.stations[1][0]][self.stations[1][1]]='G'
+        grid[self.stations[2][0]][self.stations[2][1]]='Y'
+        grid[self.stations[3][0]][self.stations[3][1]]='B'
         grid[self.passenger_loc[0]][self.passenger_loc[1]] = 'P'
         '''
         # Place destination
@@ -302,11 +317,11 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 5,
+        "grid_size": 10,
         "fuel_limit": 5000
     }
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    agent_score = run_agent("student_agent.py", env_config, render=False)
+    agent_score = run_agent("student_agent.py", env_config, render=True)
     print(f"Final Score: {agent_score}")

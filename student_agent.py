@@ -142,11 +142,12 @@ class QAgent:
         close = taxi_close_to_station(obs)
         if close is not None:
             self.visited_corners.add(close)
-            if obs[14] and not self.has_passenger and not self.has_first_picked_up:
+            if passenger_look and not self.has_passenger and not self.has_first_picked_up:
                 self.passenger_pos = close
-            if obs[15]:
+            if destination_look:
                 self.destination_pos = close
 
+        at_passenger = (self.passenger_pos is not None) and (self.passenger_pos == taxi_pos)
         at_destination = (self.destination_pos is not None) and (self.destination_pos == taxi_pos)
 
         # 如果還沒找到乘客和目的地，優先探索四個角落
@@ -157,7 +158,7 @@ class QAgent:
                 return (
                     target_dir,
                     # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                    passenger_look, at_destination,
+                    at_passenger, at_destination,
                     self.has_passenger
                 )
 
@@ -168,7 +169,7 @@ class QAgent:
             return (
                 target_dir,
                 # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                passenger_look, at_destination,
+                at_passenger, at_destination,
                 self.has_passenger
             )
 
@@ -179,7 +180,7 @@ class QAgent:
                 return (
                     target_dir,
                     # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                    passenger_look, at_destination,
+                    at_passenger, at_destination,
                     self.has_passenger
                 )
 
@@ -189,7 +190,7 @@ class QAgent:
             return (
                 target_dir,
                 # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-                passenger_look, at_destination,
+                at_passenger, at_destination,
                 self.has_passenger
             )
 
@@ -197,7 +198,7 @@ class QAgent:
         return (
             target_dir,
             # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
-            passenger_look, at_destination,
+            at_passenger, at_destination,
             self.has_passenger
         )
 

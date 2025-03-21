@@ -5,13 +5,20 @@ import random
 import gym
 from obs_to_state import obs_to_state
 
+def sign(x):
+    if x > 0:
+        return 1
+    if x < 0:
+        return -1
+    return 0
+
 def get_vector(from_pos, to_pos):
-    if from_pos[0] < to_pos[0]: return 0  # Down
-    if from_pos[0] > to_pos[0]: return 1  # Up
-    if from_pos[1] < to_pos[1]: return 2  # Right
-    if from_pos[1] > to_pos[1]: return 3  # Left
-    return random.choice([0, 1, 2, 3])  # 亂走
-    return (to_pos[0] - from_pos[0], to_pos[1] - from_pos[1])
+    # if from_pos[0] < to_pos[0]: return 0  # Down
+    # if from_pos[0] > to_pos[0]: return 1  # Up
+    # if from_pos[1] < to_pos[1]: return 2  # Right
+    # if from_pos[1] > to_pos[1]: return 3  # Left
+    # return random.choice([0, 1, 2, 3])  # 亂走
+    return (sign(to_pos[0] - from_pos[0]), sign(to_pos[1] - from_pos[1]))
 
 def taxi_close_to_station(obs):
     r, c = obs[:2]
@@ -225,13 +232,6 @@ class QAgent:
 # agent = RuleAgent()
 agent = QAgent()
 agent.load_q_table('q_table.pkl')
-
-def sign(x):
-    if x > 0:
-        return 1
-    if x < 0:
-        return -1
-    return 0
 
 def get_action(obs):
 

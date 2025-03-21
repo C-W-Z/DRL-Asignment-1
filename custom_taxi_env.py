@@ -4,6 +4,7 @@ import importlib.util
 import time
 from IPython.display import clear_output
 import random
+import torch
 # import pickle
 # This environment allows you to verify whether your program runs correctly during testing,
 # as it follows the same observation format from `env.reset()` and `env.step()`.
@@ -260,6 +261,8 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
 
     env = SimpleTaxiEnv(**env_config)
 
+    update_times = 0
+
     for episode in range(episodes):
 
         obs, _ = env.reset()
@@ -270,8 +273,11 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         student_agent.agent.reset()
         state = student_agent.agent.obs_to_state(obs)
 
+        log_probs = []
+        rewards = []
+
         while not done:
-            student_agent.agent.init_state_in_q_table(state)
+            # student_agent.agent.init_state_in_q_table(state)
 
             if np.random.uniform(0, 1) < epsilon:
                 action = random.choice([0, 1, 2, 3, 4, 5])
@@ -279,9 +285,6 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
                 action = student_agent.agent.get_action(state)
 
             student_agent.agent.update_has_passenger(obs, state, action)
-
-            # s = [[0,0] for _ in range(4)]
-            # r, c, s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1], s[3][0], s[3][1], _, _, _, _, passenger_look, destination_look = obs
 
             before_picked_up = env.passenger_picked_up
 
@@ -295,8 +298,6 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             #     print(env.passenger_picked_up, student_agent.agent.has_passenger, action)
             #     print(env.passenger_loc, env.taxi_pos, student_agent.agent.passenger_pos)
             #     exit(1)
-
-            # nr, nc, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, destination_look = obs
 
             # shaped rewards
             shaped_reward = 0
@@ -314,9 +315,16 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             total_reward += reward
             reward += shaped_reward
 
-            student_agent.agent.init_state_in_q_table(next_state)
+            rewards.append(reward)
 
-            student_agent.agent.update_q_table(state, next_state, action, alpha, reward, gamma)
+            # student_agent.agent.init_state_in_q_table(next_state)
+            # student_agent.agent.update_q_table(state, next_state, action, alpha, reward, gamma)
+
+            action_tensor = torch.tensor([action], dtype=torch.long)
+            # CrossEntropy has -log inside
+            logits = student_agent.agent.policy[state].unsqueeze(0)
+            loss = student_agent.agent.criterion(logits, action_tensor)
+            log_probs.append(loss)
 
             state = next_state
             total_shaped_reward += reward
@@ -324,26 +332,31 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         rewards_per_episode.append(total_reward)
         shaped_rewards_per_episode.append(total_shaped_reward)
 
-        epsilon = max(epsilon_end, epsilon * decay_rate)
+        if env.current_fuel > 0:
+            update_times += 1
+            student_agent.agent.update(rewards, gamma, log_probs)
+
+        # epsilon = max(epsilon_end, epsilon * decay_rate)
 
         if (episode + 1) % 100 == 0:
             avg_reward = np.mean(rewards_per_episode[-100:])
             avg_shaped_reward = np.mean(shaped_rewards_per_episode[-100:])
-            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
+            # print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
+            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Update Times: {update_times}")
             rewards_per_episode = []
             shaped_rewards_per_episode = []
 
-    student_agent.agent.save_q_table()
+        student_agent.agent.save_policy_table()
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 10,
+        "grid_size": 5,
         "fuel_limit": 5000
     }
 
-    # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
+    train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
 
-    N = 100
+    N = 1
     agent_score = 0
     for _ in range(N):
         agent_score += run_agent("student_agent.py", env_config, render=False)

@@ -29,6 +29,18 @@ def generate_stations(grid_size):
 
     return stations
 
+def generate_obstacles(grid_size, num_obstacles, stations):
+    obstacles = set()
+    all_positions = {(i, j) for i in range(grid_size) for j in range(grid_size)}
+
+    available_positions = list(all_positions - set(stations))
+    random.shuffle(available_positions)
+
+    for pos in available_positions[:num_obstacles]:
+        obstacles.add(pos)
+
+    return obstacles
+
 class SimpleTaxiEnv():
     def __init__(self, grid_size=5, fuel_limit=50):
         """
@@ -42,7 +54,7 @@ class SimpleTaxiEnv():
         # self.stations = [(0, 0), (0, self.grid_size - 1), (self.grid_size - 1, 0), (self.grid_size - 1, self.grid_size - 1)]
         self.passenger_loc = None
 
-        self.obstacles = set()  # No obstacles in simple version
+        # self.obstacles = set()  # No obstacles in simple version
         self.destination = None
 
     def reset(self):
@@ -52,6 +64,8 @@ class SimpleTaxiEnv():
 
         self.stations = generate_stations(self.grid_size)
 
+        self.obstacles = generate_obstacles(self.grid_size, self.grid_size, self.stations)
+
         available_positions = [
             (x, y) for x in range(self.grid_size) for y in range(self.grid_size)
             if (x, y) not in self.stations and (x, y) not in self.obstacles
@@ -60,7 +74,6 @@ class SimpleTaxiEnv():
         self.taxi_pos = random.choice(available_positions)
 
         self.passenger_loc = random.choice([pos for pos in self.stations])
-
 
         possible_destinations = [s for s in self.stations if s != self.passenger_loc]
         self.destination = random.choice(possible_destinations)
@@ -164,12 +177,14 @@ class SimpleTaxiEnv():
         grid[self.stations[2][0]][self.stations[2][1]]='Y'
         grid[self.stations[3][0]][self.stations[3][1]]='B'
         grid[self.passenger_loc[0]][self.passenger_loc[1]] = 'P'
-        '''
         # Place destination
-        dy, dx = destination_pos
+        dy, dx = self.destination
         if 0 <= dx < self.grid_size and 0 <= dy < self.grid_size:
             grid[dy][dx] = 'D'
-        '''
+
+        for r, c in self.obstacles:
+            grid[r][c]='O'
+
         # Place taxi
         ty, tx = taxi_pos
         if 0 <= tx < self.grid_size and 0 <= ty < self.grid_size:
@@ -240,6 +255,7 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
     spec.loader.exec_module(student_agent)
 
     rewards_per_episode = []
+    shaped_rewards_per_episode = []
     epsilon = epsilon_start
 
     env = SimpleTaxiEnv(**env_config)
@@ -289,11 +305,11 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             elif not env.passenger_picked_up and before_picked_up:
                 shaped_reward -= 200
             if env.passenger_picked_up:
-                shaped_reward += 0.01
-            # if done:
-                # shaped_reward += 1000
-            if (obs[0], obs[1]) in env.obstacles:
-                shaped_reward += 5 # 抵銷reward-5
+                shaped_reward += 0.05
+            if done:
+                shaped_reward += 1000
+            # if (obs[0], obs[1]) in env.obstacles:
+            #     shaped_reward += 5 # 抵銷reward-5
 
             total_reward += reward
             reward += shaped_reward
@@ -306,12 +322,16 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             total_shaped_reward += reward
 
         rewards_per_episode.append(total_reward)
+        shaped_rewards_per_episode.append(total_shaped_reward)
 
         epsilon = max(epsilon_end, epsilon * decay_rate)
 
         if (episode + 1) % 100 == 0:
             avg_reward = np.mean(rewards_per_episode[-100:])
-            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {total_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
+            avg_shaped_reward = np.mean(shaped_rewards_per_episode[-100:])
+            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
+            rewards_per_episode = []
+            shaped_rewards_per_episode = []
 
     student_agent.agent.save_q_table()
 
@@ -323,8 +343,8 @@ if __name__ == "__main__":
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    N = 1
+    N = 10
     agent_score = 0
     for _ in range(N):
-        agent_score += run_agent("student_agent.py", env_config, render=True)
+        agent_score += run_agent("student_agent.py", env_config, render=False)
     print(f"Final Score: {agent_score / N}")

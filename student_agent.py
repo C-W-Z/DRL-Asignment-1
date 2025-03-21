@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 import random
 import gym
-from obs_to_state import obs_to_state
 
 def sign(x):
     if x > 0:
@@ -157,7 +156,7 @@ class QAgent:
                 target_dir = get_vector(taxi_pos, unexplored[0])
                 return (
                     target_dir,
-                    # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                     at_passenger, at_destination,
                     self.has_passenger
                 )
@@ -168,7 +167,7 @@ class QAgent:
             target_dir = get_vector(taxi_pos, self.passenger_pos)
             return (
                 target_dir,
-                # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                 at_passenger, at_destination,
                 self.has_passenger
             )
@@ -179,7 +178,7 @@ class QAgent:
                 target_dir = get_vector(taxi_pos, unexplored[0])
                 return (
                     target_dir,
-                    # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                     at_passenger, at_destination,
                     self.has_passenger
                 )
@@ -189,7 +188,7 @@ class QAgent:
             target_dir = get_vector(taxi_pos, self.destination_pos)
             return (
                 target_dir,
-                # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                 at_passenger, at_destination,
                 self.has_passenger
             )
@@ -197,7 +196,7 @@ class QAgent:
         target_dir = (0, 0)
         return (
             target_dir,
-            # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+            obstacle_north, obstacle_south, obstacle_east, obstacle_west,
             at_passenger, at_destination,
             self.has_passenger
         )

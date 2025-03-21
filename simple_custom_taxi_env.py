@@ -148,6 +148,7 @@ class SimpleTaxiEnv():
         grid[0][4]='G'
         grid[4][0]='Y'
         grid[4][4]='B'
+        grid[self.passenger_loc[0]][self.passenger_loc[1]] = 'P'
         '''
         # Place destination
         dy, dx = destination_pos
@@ -157,7 +158,8 @@ class SimpleTaxiEnv():
         # Place taxi
         ty, tx = taxi_pos
         if 0 <= tx < self.grid_size and 0 <= ty < self.grid_size:
-            grid[ty][tx] = '🚖'
+            # grid[ty][tx] = '🚖'
+            grid[ty][tx] = 'T'
 
         # Print step info
         print(f"\nStep: {step}")
@@ -217,7 +219,7 @@ def run_agent(agent_file, env_config, render=False):
 
 q_table = {}
 
-def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.99975):
+def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.999):
     spec = importlib.util.spec_from_file_location("student_agent", agent_file)
     student_agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(student_agent)
@@ -231,8 +233,10 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
 
         obs, _ = env.reset()
         total_reward = 0
+        total_shaped_reward = 0
         done = False
 
+        student_agent.agent.reset()
         state = student_agent.agent.obs_to_state(obs)
 
         while not done:
@@ -241,7 +245,9 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
             if np.random.uniform(0, 1) < epsilon:
                 action = random.choice([0, 1, 2, 3, 4, 5])
             else:
-                action = student_agent.get_action_training(obs, state)
+                action = student_agent.agent.get_action(state)
+
+            student_agent.agent.update_has_passenger(obs, action)
 
             # s = [[0,0] for _ in range(4)]
             # r, c, s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1], s[3][0], s[3][1], _, _, _, _, passenger_look, destination_look = obs
@@ -252,6 +258,13 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
             # print('obs=',obs)
             next_state = student_agent.agent.obs_to_state(obs)
 
+            # if env.passenger_picked_up != student_agent.agent.has_passenger and not done:
+            #     env.render_env((obs[0], obs[1]),
+            #                action=action, step=-1, fuel=env.current_fuel)
+            #     print(env.passenger_picked_up, student_agent.agent.has_passenger, action)
+            #     print(env.passenger_loc, env.taxi_pos, student_agent.agent.passenger_pos)
+            #     exit(1)
+
             # nr, nc, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, destination_look = obs
 
             # shaped rewards
@@ -260,7 +273,14 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
                 shaped_reward += 10
             elif not env.passenger_picked_up and before_picked_up:
                 shaped_reward -= 20
+            if env.passenger_picked_up:
+                shaped_reward += 0.05
+            if done:
+                shaped_reward += 1000
+            if (obs[0], obs[1]) in env.obstacles:
+                shaped_reward += 5 # 抵銷reward-5
 
+            total_reward += reward
             reward += shaped_reward
 
             student_agent.agent.init_state_in_q_table(next_state)
@@ -268,7 +288,7 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
             student_agent.agent.update_q_table(state, next_state, action, alpha, reward, gamma)
 
             state = next_state
-            total_reward += reward
+            total_shaped_reward += reward
 
         rewards_per_episode.append(total_reward)
 
@@ -276,7 +296,7 @@ def train_agent(agent_file, env_config, episodes=10000, alpha=0.1, gamma=0.99, e
 
         if (episode + 1) % 100 == 0:
             avg_reward = np.mean(rewards_per_episode[-100:])
-            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.4f}, Epsilon: {epsilon:.3f}")
+            print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {total_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
 
     student_agent.agent.save_q_table()
 
@@ -286,7 +306,7 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
 
-    train_agent("student_agent.py", env_config)
+    # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    agent_score = run_agent("student_agent.py", env_config, render=False)
+    agent_score = run_agent("student_agent.py", env_config, render=True)
     print(f"Final Score: {agent_score}")

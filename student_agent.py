@@ -6,7 +6,12 @@ import gym
 from obs_to_state import obs_to_state
 
 def get_vector(from_pos, to_pos):
-        return (to_pos[0] - from_pos[0], to_pos[1] - from_pos[1])
+    if from_pos[0] < to_pos[0]: return 0  # Down
+    if from_pos[0] > to_pos[0]: return 1  # Up
+    if from_pos[1] < to_pos[1]: return 2  # Right
+    if from_pos[1] > to_pos[1]: return 3  # Left
+    return random.choice([0, 1, 2, 3])  # 亂走
+    return (to_pos[0] - from_pos[0], to_pos[1] - from_pos[1])
 
 def taxi_close_to_station(obs):
     r, c = obs[:2]
@@ -104,11 +109,15 @@ class RuleAgent:
 
 class QAgent:
     def __init__(self):
+        self.reset()
+        self.q_table = {}
+
+    def reset(self):
         self.passenger_pos = None
         self.destination_pos = None
         self.has_passenger = False
+        self.has_first_picked_up = False
         self.visited_corners = set()
-        self.q_table = {}
 
     def load_q_table(self, path='q_table.pkl'):
         with open(path, 'rb') as file:
@@ -120,10 +129,13 @@ class QAgent:
         stations = [(r, c) for [r, c] in stations]
         taxi_pos = (taxi_row, taxi_col)
 
+        if self.has_passenger:
+            self.passenger_pos = taxi_pos
+
         close = taxi_close_to_station(obs)
         if close is not None:
             self.visited_corners.add(close)
-            if obs[14]:
+            if obs[14] and not self.has_passenger and not self.has_first_picked_up:
                 self.passenger_pos = close
             if obs[15]:
                 self.destination_pos = close
@@ -135,7 +147,7 @@ class QAgent:
                 target_dir = get_vector(taxi_pos, unexplored[0])
                 return (
                     target_dir,
-                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                     passenger_look, destination_look,
                     self.has_passenger
                 )
@@ -146,7 +158,7 @@ class QAgent:
             target_dir = get_vector(taxi_pos, self.passenger_pos)
             return (
                 target_dir,
-                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                 passenger_look, destination_look,
                 self.has_passenger
             )
@@ -157,7 +169,7 @@ class QAgent:
                 target_dir = get_vector(taxi_pos, unexplored[0])
                 return (
                     target_dir,
-                    obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                    # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                     passenger_look, destination_look,
                     self.has_passenger
                 )
@@ -167,7 +179,7 @@ class QAgent:
             target_dir = get_vector(taxi_pos, self.destination_pos)
             return (
                 target_dir,
-                obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+                # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
                 passenger_look, destination_look,
                 self.has_passenger
             )
@@ -175,7 +187,7 @@ class QAgent:
         target_dir = (0, 0)
         return (
             target_dir,
-            obstacle_north, obstacle_south, obstacle_east, obstacle_west,
+            # obstacle_north, obstacle_south, obstacle_east, obstacle_west,
             passenger_look, destination_look,
             self.has_passenger
         )
@@ -186,16 +198,16 @@ class QAgent:
         return random.choice([0, 1, 2, 3])
 
     def update_has_passenger(self, obs, action):
-        stations = [[0,0] for _ in range(4)]
-        taxi_row, taxi_col, stations[0][0], stations[0][1], stations[1][0], stations[1][1], stations[2][0], stations[2][1], stations[3][0], stations[3][1], _, _, _, _, passenger_look, _ = obs
-        stations = [(r, c) for [r, c] in stations]
+        taxi_row, taxi_col, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, _ = obs
         taxi_pos = (taxi_row, taxi_col)
 
-        if passenger_look and not self.has_passenger and action == 4 and (taxi_pos in stations or taxi_pos == self.passenger_pos):
+        if passenger_look and not self.has_passenger and action == 4 and taxi_pos == self.passenger_pos:
             self.has_passenger = True
+            self.has_first_picked_up = True
             # print("pickup")
         elif self.has_passenger and action == 5:
             self.has_passenger = False
+            # print("dropoff")
 
     def update_q_table(self, state, next_state, action, alpha, reward, gamma):
         self.q_table[state][action] += alpha * (reward + gamma * max(self.q_table[next_state].values()) - self.q_table[state][action])
@@ -211,11 +223,6 @@ class QAgent:
 # agent = RuleAgent()
 agent = QAgent()
 agent.load_q_table('q_table.pkl')
-
-def get_action_training(obs, state):
-    action = agent.get_action(state)
-    agent.update_has_passenger(obs, action)
-    return action
 
 def sign(x):
     if x > 0:

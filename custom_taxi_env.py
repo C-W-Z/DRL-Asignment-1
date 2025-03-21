@@ -343,7 +343,7 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
 
-    # train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
+    train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
 
     N = 100
     agent_score = 0

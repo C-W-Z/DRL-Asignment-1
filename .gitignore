@@ -10,3 +10,4 @@ eval.py
 
 q_table_*.pkl
 *.json
+*.txt

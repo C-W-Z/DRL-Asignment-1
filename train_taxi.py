@@ -4,7 +4,7 @@ import importlib.util
 import time
 from IPython.display import clear_output
 import random
-import torch
+
 # import pickle
 # This environment allows you to verify whether your program runs correctly during testing,
 # as it follows the same observation format from `env.reset()` and `env.step()`.
@@ -250,14 +250,13 @@ def run_agent(agent_file, env_config, render=False):
     print(f"Agent Finished in {step_count} steps, Score: {total_reward}")
     return total_reward
 
-def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.999):
+def train_agent(agent_file, env_config, episodes=5000, gamma=0.99, update_all=False):
     spec = importlib.util.spec_from_file_location("student_agent", agent_file)
     student_agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(student_agent)
 
     rewards_per_episode = []
     shaped_rewards_per_episode = []
-    epsilon = epsilon_start
 
     env = SimpleTaxiEnv(**env_config)
 
@@ -274,19 +273,13 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         state = student_agent.agent.obs_to_state(obs)
 
         while not done:
-            # student_agent.agent.init_state_in_q_table(state)
-
-            # if np.random.uniform(0, 1) < epsilon:
-            #     action = random.choice([0, 1, 2, 3, 4, 5])
-            # else:
             action = student_agent.agent.get_action(state)
 
-            student_agent.agent.update_has_passenger(obs, state, action)
+            student_agent.agent.update_after_get_action(obs, state, action)
 
             before_picked_up = env.passenger_picked_up
 
             obs, reward, done, _ = env.step(action)
-            # print('obs=',obs)
             next_state = student_agent.agent.obs_to_state(obs)
 
             # if env.passenger_picked_up != student_agent.agent.has_passenger and not done:
@@ -304,10 +297,8 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
                 shaped_reward -= 200
             if env.passenger_picked_up:
                 shaped_reward += 0.05
-            if done:
+            if done and env.current_fuel > 0:
                 shaped_reward += 1000
-            # if (obs[0], obs[1]) in env.obstacles:
-            #     shaped_reward += 5 # 抵銷reward-5
 
             total_reward += reward
             reward += shaped_reward
@@ -320,17 +311,20 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         rewards_per_episode.append(total_reward)
         shaped_rewards_per_episode.append(total_shaped_reward)
 
-        if env.current_fuel > 0:
-            update_times += 1
+        if update_all:
+            if env.current_fuel > 0:
+                update_times += 1
             student_agent.agent.update(gamma)
-        student_agent.agent.clean_update()
+        else:
+            if env.current_fuel > 0:
+                update_times += 1
+                student_agent.agent.update(gamma)
 
-        # epsilon = max(epsilon_end, epsilon * decay_rate)
+        student_agent.agent.clean_update()
 
         if (episode + 1) % 50 == 0:
             avg_reward = np.mean(rewards_per_episode[-50:])
             avg_shaped_reward = np.mean(shaped_rewards_per_episode[-50:])
-            # print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Epsilon: {epsilon:.3f}")
             print(f"Episode {episode + 1}/{episodes}, Avg Reward: {avg_reward:.1f}, Avg Shaped Reward: {avg_shaped_reward:.1f}, Update Times: {update_times}")
             del rewards_per_episode[:]
             del shaped_rewards_per_episode[:]
@@ -338,14 +332,29 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             student_agent.save_checkpoint(student_agent.agent)
 
 if __name__ == "__main__":
+    # env_config = {
+    #     "grid_size": 5,
+    #     "fuel_limit": 5000
+    # }
+
+    # train_agent("student_agent.py", env_config, episodes=1000, update_all=True)
+
+    # env_config = {
+    #     "grid_size": 7,
+    #     "fuel_limit": 5000
+    # }
+
+    # train_agent("student_agent.py", env_config, episodes=5000, update_all=False)
+
     env_config = {
-        "grid_size": 7,
+        "grid_size": 10,
         "fuel_limit": 5000
     }
 
-    train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
+    # train_agent("student_agent.py", env_config, episodes=4000, update_all=False)
+    # train_agent("student_agent.py", env_config, episodes=3000, update_all=True)
 
-    N = 100
+    N = 10
     agent_score = 0
     for _ in range(N):
         agent_score += run_agent("student_agent.py", env_config, render=False)

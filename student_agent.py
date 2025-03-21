@@ -5,7 +5,9 @@ import random
 import gym
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
+from torch.distributions import Categorical
 from collections import deque
 
 eps = np.finfo(np.float32).eps.item()
@@ -242,9 +244,10 @@ class QAgent:
 # agent = QAgent()
 # agent.load_q_table('q_table.pkl')
 
-class PolicyAgent:
-    def __init__(self, lr=0.1, path='policy_table.pkl'):
-        self.init_policy(lr, path)
+class PolicyAgent(nn.Module):
+    def __init__(self):
+        super(PolicyAgent, self).__init__()
+        self.init_policy()
         self.reset()
 
     def reset(self):
@@ -254,41 +257,52 @@ class PolicyAgent:
         self.has_first_picked_up = False
         self.visited_corners = set()
 
-    def init_policy(self, lr=0.1, path='policy_table.pkl'):
+    def init_policy(self):
         self.state_size = (3, 3, 2, 2, 2, 2, 2, 2, 2)
         self.action_size = 6
-        if path:
-            with open(path, 'rb') as file:
-                self.policy = pickle.load(file)
-        else:
-            self.policy = nn.Parameter(torch.zeros(self.state_size + (self.action_size,)))
-        self.optimizer = optim.Adam([self.policy], lr=lr)
-        self.criterion = nn.CrossEntropyLoss()
 
-    def save_policy_table(self, path='policy_table.pkl'):
-        with open(path, 'wb') as file:
-            pickle.dump(self.policy, file, protocol=pickle.HIGHEST_PROTOCOL)
+        self.affine1 = nn.Linear(9, 32)
+        self.dropout = nn.Dropout(p=0.05)
+        self.affine2 = nn.Linear(32, self.action_size)
+
+        self.optimizer = optim.Adam(self.parameters(), lr=0.001)
+
+        self.saved_log_probs = []
+        self.rewards = []
+
+    def forward(self, x):
+        x = torch.flatten(x, start_dim=1)
+        x = self.affine1(x)
+        x = self.dropout(x)
+        x = F.relu(x)
+        action_scores = self.affine2(x)
+        return F.softmax(action_scores, dim=1)
 
     def get_action(self, state):
-        probabilities = torch.softmax(self.policy[state], dim=-1)
-        action = torch.multinomial(probabilities, 1).item()
-        return action
+        state_tensor = torch.from_numpy(np.array(state)).float().unsqueeze(0)
+        probs = self(state_tensor)
+        m = Categorical(probs)
+        action = m.sample()
+        self.saved_log_probs.append(m.log_prob(action))
+        return action.item()
 
-    def update(self, rewards, gamma, log_probs):
+    def update(self, gamma):
         R = 0
         policy_loss = []
         returns = deque()
-        for r in rewards[::-1]:
+        for r in self.rewards[::-1]:
             R = r + gamma * R
             returns.appendleft(R)
         returns = torch.tensor(returns)
         returns = (returns - returns.mean()) / (returns.std() + eps)
-        for log_prob, R in zip(log_probs, returns):
-            policy_loss.append(log_prob * R)
+        for log_prob, R in zip(self.saved_log_probs, returns):
+            policy_loss.append(-log_prob * R)
         self.optimizer.zero_grad()
-        policy_loss = torch.stack(policy_loss).sum()
+        policy_loss = torch.cat(policy_loss).sum()
         policy_loss.backward()
         self.optimizer.step()
+        del self.rewards[:]
+        del self.saved_log_probs[:]
 
     def obs_to_state(self, obs):
         stations = [[0,0] for _ in range(4)]
@@ -368,7 +382,21 @@ class PolicyAgent:
             if state[2]:
                 self.reset()
 
-agent = PolicyAgent(path='policy_table.pkl')
+def save_checkpoint(model, filename='checkpoint.pth'):
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': model.optimizer.state_dict(),
+    }
+    torch.save(checkpoint, filename)
+
+def load_checkpoint(model, filename='checkpoint.pth'):
+    checkpoint = torch.load(filename)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+agent = PolicyAgent()
+load_checkpoint(agent)
+agent.eval()
 
 def get_action(obs):
 

@@ -273,16 +273,13 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
         student_agent.agent.reset()
         state = student_agent.agent.obs_to_state(obs)
 
-        log_probs = []
-        rewards = []
-
         while not done:
             # student_agent.agent.init_state_in_q_table(state)
 
-            if np.random.uniform(0, 1) < epsilon:
-                action = random.choice([0, 1, 2, 3, 4, 5])
-            else:
-                action = student_agent.agent.get_action(state)
+            # if np.random.uniform(0, 1) < epsilon:
+            #     action = random.choice([0, 1, 2, 3, 4, 5])
+            # else:
+            action = student_agent.agent.get_action(state)
 
             student_agent.agent.update_has_passenger(obs, state, action)
 
@@ -315,16 +312,7 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             total_reward += reward
             reward += shaped_reward
 
-            rewards.append(reward)
-
-            # student_agent.agent.init_state_in_q_table(next_state)
-            # student_agent.agent.update_q_table(state, next_state, action, alpha, reward, gamma)
-
-            action_tensor = torch.tensor([action], dtype=torch.long)
-            # CrossEntropy has -log inside
-            logits = student_agent.agent.policy[state].unsqueeze(0)
-            loss = student_agent.agent.criterion(logits, action_tensor)
-            log_probs.append(loss)
+            student_agent.agent.rewards.append(reward)
 
             state = next_state
             total_shaped_reward += reward
@@ -334,7 +322,10 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
 
         if env.current_fuel > 0:
             update_times += 1
-            student_agent.agent.update(rewards, gamma, log_probs)
+            student_agent.agent.update(gamma)
+        # else:
+        #     del student_agent.agent.rewards[:]
+        #     del student_agent.agent.saved_log_probs[:]
 
         # epsilon = max(epsilon_end, epsilon * decay_rate)
 
@@ -346,15 +337,15 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             rewards_per_episode = []
             shaped_rewards_per_episode = []
 
-        student_agent.agent.save_policy_table()
+            student_agent.save_checkpoint(student_agent.agent)
 
 if __name__ == "__main__":
     env_config = {
-        "grid_size": 5,
+        "grid_size": 7,
         "fuel_limit": 5000
     }
 
-    train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
+    # train_agent("student_agent.py", env_config, episodes=5000, decay_rate=0.9995)
 
     N = 1
     agent_score = 0

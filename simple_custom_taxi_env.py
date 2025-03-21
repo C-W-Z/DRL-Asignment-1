@@ -229,10 +229,10 @@ def run_agent(agent_file, env_config, render=False):
             env.render_env((taxi_row, taxi_col),
                            action=action, step=step_count, fuel=env.current_fuel)
 
+    # print(student_agent.agent.q_table)
+
     print(f"Agent Finished in {step_count} steps, Score: {total_reward}")
     return total_reward
-
-q_table = {}
 
 def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, decay_rate=0.999):
     spec = importlib.util.spec_from_file_location("student_agent", agent_file)
@@ -262,7 +262,7 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             else:
                 action = student_agent.agent.get_action(state)
 
-            student_agent.agent.update_has_passenger(obs, action)
+            student_agent.agent.update_has_passenger(obs, state, action)
 
             # s = [[0,0] for _ in range(4)]
             # r, c, s[0][0], s[0][1], s[1][0], s[1][1], s[2][0], s[2][1], s[3][0], s[3][1], _, _, _, _, passenger_look, destination_look = obs
@@ -287,11 +287,11 @@ def train_agent(agent_file, env_config, episodes=5000, alpha=0.1, gamma=0.99, ep
             if env.passenger_picked_up and not before_picked_up:
                 shaped_reward += 10
             elif not env.passenger_picked_up and before_picked_up:
-                shaped_reward -= 20
+                shaped_reward -= 200
             if env.passenger_picked_up:
-                shaped_reward += 0.05
-            if done:
-                shaped_reward += 1000
+                shaped_reward += 0.01
+            # if done:
+                # shaped_reward += 1000
             if (obs[0], obs[1]) in env.obstacles:
                 shaped_reward += 5 # 抵銷reward-5
 
@@ -323,5 +323,8 @@ if __name__ == "__main__":
 
     # train_agent("student_agent.py", env_config, episodes=20000, decay_rate=0.99985)
 
-    agent_score = run_agent("student_agent.py", env_config, render=True)
-    print(f"Final Score: {agent_score}")
+    N = 1
+    agent_score = 0
+    for _ in range(N):
+        agent_score += run_agent("student_agent.py", env_config, render=True)
+    print(f"Final Score: {agent_score / N}")

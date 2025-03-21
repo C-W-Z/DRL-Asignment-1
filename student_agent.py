@@ -207,7 +207,7 @@ class QAgent:
             return max(self.q_table[state], key=self.q_table[state].get)
         return random.choice([0, 1, 2, 3])
 
-    def update_has_passenger(self, obs, action):
+    def update_has_passenger(self, obs, state, action):
         taxi_row, taxi_col, _, _, _, _, _, _, _, _, _, _, _, _, passenger_look, _ = obs
         taxi_pos = (taxi_row, taxi_col)
 
@@ -218,6 +218,8 @@ class QAgent:
         elif self.has_passenger and action == 5:
             self.has_passenger = False
             # print("dropoff")
+            if state[2]:
+                self.reset()
 
     def update_q_table(self, state, next_state, action, alpha, reward, gamma):
         self.q_table[state][action] += alpha * (reward + gamma * max(self.q_table[next_state].values()) - self.q_table[state][action])
@@ -243,7 +245,7 @@ def get_action(obs):
     #       Otherwise, even if your agent performs well in training, it may fail during testing.
     state = agent.obs_to_state(obs)
     action = agent.get_action(state)
-    agent.update_has_passenger(obs, action)
+    agent.update_has_passenger(obs, state, action)
     return action
 
     state = obs_to_state(obs)

@@ -332,27 +332,27 @@ def train_agent(agent_file, env_config, episodes=5000, gamma=0.99, update_all=Fa
             student_agent.save_checkpoint(student_agent.agent)
 
 if __name__ == "__main__":
-    # env_config = {
-    #     "grid_size": 5,
-    #     "fuel_limit": 5000
-    # }
+    env_config = {
+        "grid_size": 5,
+        "fuel_limit": 5000
+    }
 
-    # train_agent("student_agent.py", env_config, episodes=1000, update_all=True)
+    train_agent("student_agent.py", env_config, episodes=1000, update_all=True)
 
-    # env_config = {
-    #     "grid_size": 7,
-    #     "fuel_limit": 5000
-    # }
+    env_config = {
+        "grid_size": 7,
+        "fuel_limit": 5000
+    }
 
-    # train_agent("student_agent.py", env_config, episodes=5000, update_all=False)
+    train_agent("student_agent.py", env_config, episodes=5000, update_all=False)
 
     env_config = {
         "grid_size": 10,
         "fuel_limit": 5000
     }
 
-    # train_agent("student_agent.py", env_config, episodes=4000, update_all=False)
-    # train_agent("student_agent.py", env_config, episodes=3000, update_all=True)
+    train_agent("student_agent.py", env_config, episodes=4000, update_all=False)
+    train_agent("student_agent.py", env_config, episodes=5000, update_all=True)
 
     N = 10
     agent_score = 0
